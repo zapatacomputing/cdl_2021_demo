@@ -90,8 +90,8 @@ def find_appropriate_params(
     initial_params: np.ndarray,
     mode: str,
 ) -> OptimizeResult:
-    backend = (QulacsSimulator(),)
-    optimizer = (ScipyOptimizer(method="L-BFGS-B"),)
+    backend = QulacsSimulator()
+    optimizer = ScipyOptimizer(method="L-BFGS-B")
 
     if mode == "low":
         cost_function = AnsatzBasedCostFunction(
@@ -245,9 +245,9 @@ if __name__ == "__main__":
         graph_specs=graph_specs,
     )
 
-    # result = wf.local_run(log_level=logging.INFO)
+    result = wf.local_run(log_level=logging.INFO)
     # import pdb
 
     # pdb.set_trace()
-    wf.validate()
-    wf.submit()
+    # wf.validate()
+    # wf.submit()
