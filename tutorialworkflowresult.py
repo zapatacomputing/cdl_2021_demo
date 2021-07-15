@@ -5,7 +5,7 @@ import codecs
 import typing
 import os
 import json
-import pickle
+import dill
 from dataclasses import dataclass, field
 
 ENCODED_PICKLE = "encodedpickle"
@@ -51,7 +51,7 @@ class TutorialJsonIOManager(typing.List[str]):
         # if val is type List[str], then assume it is an encoded pickle
         if is_type_list_str(val):
             val = "".join(val)
-            return pickle.loads(codecs.decode(val.encode(), self.encoding_scheme))
+            return dill.loads(codecs.decode(val.encode(), self.encoding_scheme))
 
         # if val is `/app/_.json`, then it is a file we need to read before deserializing
         if (
