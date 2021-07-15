@@ -40,7 +40,9 @@ def load_graph_from_file(graph_size, graph_id):
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
-def get_graph(size_of_graph: int, graph_id: int, graph_specs: Dict) -> nx.Graph:
+def get_graph(
+    size_of_graph: int, graph_id: int, graph_specs: Optional[Dict]
+) -> nx.Graph:
     if graph_specs is None:
         return load_graph_from_file(size_of_graph, graph_id)
     graph_specs["num_nodes"] = size_of_graph
@@ -87,9 +89,10 @@ def find_appropriate_params(
     ansatz: Ansatz,
     initial_params: np.ndarray,
     mode: str,
-    backend: QuantumBackend,
-    optimizer: Optimizer,
 ) -> OptimizeResult:
+    backend = (QulacsSimulator(),)
+    optimizer = (ScipyOptimizer(method="L-BFGS-B"),)
+
     if mode == "low":
         cost_function = AnsatzBasedCostFunction(
             target_operator=-cost_hamiltonian,
@@ -141,10 +144,10 @@ def analyze_evaluations(
 @qe.workflow(
     name="qaoa-opt",
     import_defs=[
-        qe.Z.Quantum.Core(),
-        qe.Z.Quantum.Optimizers(),
-        qe.Z.Quantum.Qaoa(),
-        qe.QE.Qulacs(),
+        qe.Z.Quantum.Core(branch_name="dev"),
+        qe.Z.Quantum.Optimizers(branch_name="dev"),
+        qe.Z.Quantum.Qaoa(branch_name="dev"),
+        qe.QE.Qulacs(branch_name="dev"),
         qe.GitImportDefinition.get_current_repo_and_branch(),
     ],
 )
@@ -156,8 +159,6 @@ def qaoa_concentration_workflow(
     max_layers: int,
     modes: List[str],
     graph_specs: Optional[Dict],
-    backend: QuantumBackend,
-    optimizer: Optimizer,
 ) -> List[qe.StepDefinition]:
 
     ####################
@@ -183,7 +184,7 @@ def qaoa_concentration_workflow(
             number_of_params = 2 * number_of_layers
             initial_params = generate_random_parameters(-np.pi, np.pi, number_of_params)
             opt_results = find_appropriate_params(
-                cost_hamiltonian, ansatz, initial_params, mode, backend, optimizer
+                cost_hamiltonian, ansatz, initial_params, mode
             )
             selected_results.append(opt_results)
         ####################
@@ -208,7 +209,7 @@ def qaoa_concentration_workflow(
                 for mode, results in zip(modes, selected_results):
                     params = get_params_from_results(results)
                     opt_results = find_appropriate_params(
-                        cost_hamiltonian, ansatz, params, "evaluate", backend, optimizer
+                        cost_hamiltonian, ansatz, params, "evaluate"
                     )
                     # execution_results[mode].append(opt_results)
                     all_results.append(opt_results)
@@ -227,11 +228,12 @@ if __name__ == "__main__":
     ####################
     size_of_graph = 10
     size_of_big_graph = 20
-    number_of_graphs = 2
+    number_of_graphs = 1
     min_layers = 2
     max_layers = 2
     modes = ["high", "random", "low"]
     graph_specs = {"type_graph": "regular", "degree": 3}
+    # graph_specs = None
 
     wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
         size_of_graph=size_of_graph,
@@ -241,8 +243,6 @@ if __name__ == "__main__":
         max_layers=max_layers,
         modes=modes,
         graph_specs=graph_specs,
-        backend=QulacsSimulator(),
-        optimizer=ScipyOptimizer(method="L-BFGS-B"),
     )
 
     # result = wf.local_run(log_level=logging.INFO)
