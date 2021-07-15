@@ -245,9 +245,9 @@ if __name__ == "__main__":
         graph_specs=graph_specs,
     )
 
-    result = wf.local_run(log_level=logging.INFO)
+    # result = wf.local_run(log_level=logging.INFO)
     # import pdb
 
     # pdb.set_trace()
-    # wf.validate()
-    # wf.submit()
+    wf.validate()
+    wf.submit()
