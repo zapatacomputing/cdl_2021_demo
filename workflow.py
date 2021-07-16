@@ -255,10 +255,10 @@ if __name__ == "__main__":
     problem = "maxcut"
     # problem = "stable_set"
     modes = ["high", "random", "low"]
-    graph_specs = {"type_graph": "regular", "degree": 3}
+    # graph_specs = {"type_graph": "regular", "degree": 3}
     # graph_specs = {"type_graph": "regular", "degree": 4}
     # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.6}
-    # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.8}
+    graph_specs = {"type_graph": "erdos_renyi", "probability": 0.8}
 
     wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
         size_of_graph=size_of_graph,
