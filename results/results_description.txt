@@ -1,0 +1,23 @@
+MaxCut, 3-regular graph, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-ccb37456-4211-43a9-949f-8f0de428e68d
+
+MaxCut, 4-regular graph, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-ffa684c0-ad32-4999-9be5-5e2e62c8bd89
+
+MaxCut, Erdos-Renyi graph prob: 0.8, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-8039b91d-69d3-429e-83de-5680a515fa12
+
+MaxCut, Erdos-Renyi graph prob: 0.6, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-3dcc7f58-1a0d-4571-9fb9-1027dbb06d38
+
+StableSet, 3-regular graph, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-932fb089-da05-4936-894d-86333975737f
+
+StableSet, 4-regular graph, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-22e4dc68-b401-4fd6-9a25-0252c98a44b7
+
+StableSet, Erdos-Renyi graph prob: 0.6, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-2103e85c-e4e2-4e32-9b2a-00ba4baa043f
+
+StableSet, Erdos-Renyi graph prob: 0.8, 10 & 20, 2-7 layers, 25 graphs:
+  qaoa-concentration-1d774cfb-0a5d-46d4-b11c-4e8de9f729ab
