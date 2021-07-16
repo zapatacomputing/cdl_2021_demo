@@ -1,4 +1,5 @@
 dill==0.3.4
+symengine==0.7.2
 git+https://github.com/zapatacomputing/z-quantum-core.git@dev
 git+https://github.com/zapatacomputing/z-quantum-qaoa.git@dev
 git+https://github.com/zapatacomputing/qe-qulacs.git@dev
