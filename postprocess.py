@@ -79,6 +79,3 @@ if __name__ == "__main__":
     print(
         df.unstack(fill_value=0).unstack(fill_value=0).unstack(fill_value=0)
     )  # do some unstacking to move index "above" our table
-    import pdb
-
-    pdb.set_trace()
