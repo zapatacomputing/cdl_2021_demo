@@ -6,7 +6,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from openfermion import QubitOperator
-import qe.sdk.v1 as qe
+import orquestra
 from qequlacs import QulacsSimulator
 from zquantum.core.interfaces.optimizer import Optimizer, OptimizeResult
 
@@ -43,8 +43,8 @@ def get_problem_hamiltonian(graph: nx.graph, problem="maxcut") -> QubitOperator:
         return get_stable_set_hamiltonian(graph)
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def get_graph_step(
     size_of_graph: int, graph_id: int, graph_specs: Optional[Dict]
@@ -61,15 +61,15 @@ def get_graph(
     return generate_graph_from_specs(graph_specs)
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def get_problem_hamiltonian_step(graph: nx.Graph, problem: str) -> QubitOperator:
     return get_problem_hamiltonian(graph, problem)
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def get_ansatz_step(number_of_layers: int, cost_hamiltonian: QubitOperator) -> Ansatz:
     return get_ansatz(
@@ -83,8 +83,8 @@ def get_ansatz(number_of_layers: int, cost_hamiltonian: QubitOperator) -> Ansatz
     )
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def generate_random_parameters(
     min_value: float, max_value: float, number_of_parameters: int
@@ -92,15 +92,15 @@ def generate_random_parameters(
     return np.random.uniform(min_value, max_value, number_of_parameters)
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def get_params_from_results(results: OptimizeResult) -> np.ndarray:
     return results.opt_params
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def find_appropriate_params_step(
     cost_hamiltonian: QubitOperator,
@@ -148,8 +148,8 @@ def find_appropriate_params(
     return opt_results
 
 
-@qe.step(
-    resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
+@orquestra.task(
+    resource_def=orquestra.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
 def evaluate_params(
     graph_size: int,
@@ -181,14 +181,14 @@ def evaluate_params(
     return results
 
 
-@qe.workflow(
+@orquestra.workflow(
     name="qaoa-concentration",
     import_defs=[
-        qe.Z.Quantum.Core(branch_name="dev"),
-        qe.Z.Quantum.Optimizers(branch_name="dev"),
-        qe.Z.Quantum.Qaoa(branch_name="master"),
-        qe.QE.Qulacs(branch_name="dev"),
-        qe.GitImportDefinition.get_current_repo_and_branch(),
+        orquestra.Z.Quantum.Core(branch_name="dev"),
+        orquestra.Z.Quantum.Optimizers(branch_name="dev"),
+        orquestra.Z.Quantum.Qaoa(branch_name="master"),
+        orquestra.orquestra.Qulacs(branch_name="dev"),
+        orquestra.GitImportDefinition.get_current_repo_and_branch(),
     ],
 )
 def qaoa_concentration_workflow(
@@ -200,7 +200,7 @@ def qaoa_concentration_workflow(
     modes: List[str],
     graph_specs: Optional[Dict],
     problem: str,
-) -> List[qe.StepDefinition]:
+) -> List[orquestra.taskDefinition]:
 
     ####################
     # 2. Layers loop
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.6}
     graph_specs = {"type_graph": "erdos_renyi", "probability": 0.8}
 
-    wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
+    wf: orquestra.WorkflowDefinition = qaoa_concentration_workflow(
         size_of_graph=size_of_graph,
         size_of_big_graph=size_of_big_graph,
         number_of_graphs=number_of_graphs,
