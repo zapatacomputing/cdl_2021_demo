@@ -1,3 +1,5 @@
 dill==0.3.4
-git+https://github.com/zapatacomputing/z-quantum-core.git
-git+https://github.com/zapatacomputing/z-quantum-qaoa.git
+git+https://github.com/zapatacomputing/z-quantum-core.git@dev
+git+https://github.com/zapatacomputing/z-quantum-qaoa.git@dev
+git+https://github.com/zapatacomputing/qe-qulacs.git@dev
+git+https://github.com/zapatacomputing/z-quantum-optimizers.git@dev
