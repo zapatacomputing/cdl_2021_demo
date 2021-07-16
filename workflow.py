@@ -24,9 +24,7 @@ from zquantum.core.interfaces.optimizer import (
 )
 from zquantum.optimizers.scipy_optimizer import ScipyOptimizer
 from zquantum.qaoa.ansatzes.farhi_ansatz import QAOAFarhiAnsatz
-from zquantum.qaoa.problems.maxcut import (
-    get_maxcut_hamiltonian as _get_maxcut_hamiltonian,
-)
+from zquantum.qaoa.problems.maxcut import get_maxcut_hamiltonian
 
 
 def load_graph_from_file(graph_size, graph_id):
@@ -35,6 +33,14 @@ def load_graph_from_file(graph_size, graph_id):
             "graphs", f"size_{graph_size}", f"graph_{graph_size}_{graph_id}.json"
         )
     )
+
+
+def get_problem_hamiltonian(graph: nx.graph) -> QubitOperator:
+    # from zquantum.qaoa.problems.graph_partition import get_graph_partition_hamiltonian
+    # return get_graph_partition_hamiltonian(graph)
+    # from zquantum.qaoa.problems.stable_set import get_stable_set_hamiltonian
+    # return get_stable_set_hamiltonian(graph)
+    return get_maxcut_hamiltonian(graph)
 
 
 @qe.step(
@@ -58,8 +64,8 @@ def get_graph(
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
-def get_maxcut_hamiltonian(graph: nx.Graph) -> QubitOperator:
-    return _get_maxcut_hamiltonian(graph)
+def get_problem_hamiltonian_step(graph: nx.Graph) -> QubitOperator:
+    return get_problem_hamiltonian(graph)
 
 
 @qe.step(
@@ -159,7 +165,7 @@ def evaluate_params(
         ####################
 
         graph = get_graph(graph_size, graph_id, graph_specs)
-        cost_hamiltonian = _get_maxcut_hamiltonian(graph)
+        cost_hamiltonian = get_problem_hamiltonian(graph)
         ansatz = get_ansatz(
             number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
@@ -204,7 +210,7 @@ def qaoa_concentration_workflow(
         ####################
         graph_id = 0
         graph = get_graph_step(size_of_graph, graph_id, graph_specs)
-        cost_hamiltonian = get_maxcut_hamiltonian(graph)
+        cost_hamiltonian = get_problem_hamiltonian_step(graph)
         ansatz = get_ansatz_step(
             number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
@@ -218,7 +224,6 @@ def qaoa_concentration_workflow(
             opt_results = find_appropriate_params_step(
                 cost_hamiltonian, ansatz, initial_params, mode
             )
-            # selected_results.append(opt_results)
             ####################
             # 5. Evaluating parameters
             ####################
@@ -241,11 +246,14 @@ if __name__ == "__main__":
     ####################
     size_of_graph = 10
     size_of_big_graph = 20
-    number_of_graphs = 2
+    number_of_graphs = 25
     min_layers = 2
-    max_layers = 3
+    max_layers = 7
     modes = ["high", "random", "low"]
-    graph_specs = {"type_graph": "regular", "degree": 3}
+    # graph_specs = {"type_graph": "regular", "degree": 3}
+    # graph_specs = {"type_graph": "regular", "degree": 4}
+    graph_specs = {"type_graph": "erdos_renyi", "probability": 0.6}
+    # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.8}
 
     wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
         size_of_graph=size_of_graph,
