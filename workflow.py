@@ -40,6 +40,12 @@ def load_graph_from_file(graph_size, graph_id):
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
+def get_graph_step(
+    size_of_graph: int, graph_id: int, graph_specs: Optional[Dict]
+) -> nx.Graph:
+    return get_graph(size_of_graph, graph_id, graph_specs)
+
+
 def get_graph(
     size_of_graph: int, graph_id: int, graph_specs: Optional[Dict]
 ) -> nx.Graph:
@@ -59,6 +65,12 @@ def get_maxcut_hamiltonian(graph: nx.Graph) -> QubitOperator:
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
+def get_ansatz_step(number_of_layers: int, cost_hamiltonian: QubitOperator) -> Ansatz:
+    return get_ansatz(
+        number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
+    )
+
+
 def get_ansatz(number_of_layers: int, cost_hamiltonian: QubitOperator) -> Ansatz:
     return QAOAFarhiAnsatz(
         number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
@@ -84,6 +96,15 @@ def get_params_from_results(results: OptimizeResult) -> np.ndarray:
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
+def find_appropriate_params_step(
+    cost_hamiltonian: QubitOperator,
+    ansatz: Ansatz,
+    initial_params: np.ndarray,
+    mode: str,
+) -> OptimizeResult:
+    return find_appropriate_params(cost_hamiltonian, ansatz, initial_params, mode)
+
+
 def find_appropriate_params(
     cost_hamiltonian: QubitOperator,
     ansatz: Ansatz,
@@ -124,29 +145,41 @@ def find_appropriate_params(
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
-def analyze_evaluations(
-    number_of_layers: int, evaluation_results: List  # Dict
-) -> pd.DataFrame:
-    df = pd.DataFrame(columns=["n_layers", "mode", "mean", "std"])
-    for mode, results_list in evaluation_results.items():
-        values = [result.opt_value for result in results_list]
-        df = df.append(
-            {
-                "n_layers": number_of_layers,
-                "mode": mode,
-                "mean": np.mean(values),
-                "std": np.std(values),
-            }
+def evaluate_params(
+    graph_size: int,
+    number_of_graphs: int,
+    graph_specs: Dict,
+    number_of_layers: int,
+    selected_results: OptimizeResult,
+) -> Dict:
+    results = []
+    for graph_id in range(number_of_graphs):
+        ####################
+        # 5.1 Problem definition
+        ####################
+
+        graph = get_graph(graph_size, graph_id, graph_specs)
+        cost_hamiltonian = _get_maxcut_hamiltonian(graph)
+        ansatz = get_ansatz(
+            number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
-    return df
+        ####################
+        # 5.2 Execution
+        ####################
+        params = selected_results.opt_params
+        opt_results = find_appropriate_params(
+            cost_hamiltonian, ansatz, params, "evaluate"
+        )
+        results.append(opt_results.opt_value)
+    return results
 
 
 @qe.workflow(
-    name="qaoa-opt",
+    name="qaoa-concentration",
     import_defs=[
         qe.Z.Quantum.Core(branch_name="dev"),
         qe.Z.Quantum.Optimizers(branch_name="dev"),
-        qe.Z.Quantum.Qaoa(branch_name="dev"),
+        qe.Z.Quantum.Qaoa(branch_name="master"),
         qe.QE.Qulacs(branch_name="dev"),
         qe.GitImportDefinition.get_current_repo_and_branch(),
     ],
@@ -170,55 +203,35 @@ def qaoa_concentration_workflow(
         # 3. Problem definition
         ####################
         graph_id = 0
-        graph = get_graph(size_of_graph, graph_id, graph_specs)
+        graph = get_graph_step(size_of_graph, graph_id, graph_specs)
         cost_hamiltonian = get_maxcut_hamiltonian(graph)
-        ansatz = get_ansatz(
+        ansatz = get_ansatz_step(
             number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
 
         ####################
         # 4. Finding parameters
         ####################
-        selected_results = []
         for mode in modes:
             number_of_params = 2 * number_of_layers
             initial_params = generate_random_parameters(-np.pi, np.pi, number_of_params)
-            opt_results = find_appropriate_params(
+            opt_results = find_appropriate_params_step(
                 cost_hamiltonian, ansatz, initial_params, mode
             )
-            selected_results.append(opt_results)
-        ####################
-        # 5. Evaluating parameters
-        ####################
-        for evaluation_size in [size_of_graph, size_of_big_graph]:
-            # execution_results = {mode: [] for mode in modes}
-            execution_results = []
-            for graph_id in range(number_of_graphs):
-                ####################
-                # 5.1 Problem definition
-                ####################
-
-                graph = get_graph(evaluation_size, graph_id, graph_specs)
-                cost_hamiltonian = get_maxcut_hamiltonian(graph)
-                ansatz = get_ansatz(
-                    number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
+            # selected_results.append(opt_results)
+            ####################
+            # 5. Evaluating parameters
+            ####################
+            for evaluation_size in [size_of_graph, size_of_big_graph]:
+                evaluation_results = evaluate_params(
+                    evaluation_size,
+                    number_of_graphs,
+                    graph_specs,
+                    number_of_layers,
+                    opt_results,
                 )
-                ####################
-                # 5.2 Execution
-                ####################
-                for mode, results in zip(modes, selected_results):
-                    params = get_params_from_results(results)
-                    opt_results = find_appropriate_params(
-                        cost_hamiltonian, ansatz, params, "evaluate"
-                    )
-                    # execution_results[mode].append(opt_results)
-                    all_results.append(opt_results)
+                all_results.append(evaluation_results)
 
-            # ####################
-            # # 6. Data presentation
-            # ####################
-            analysis_results = analyze_evaluations(number_of_layers, execution_results)
-            # all_results.append(analysis_results)
     return all_results
 
 
@@ -228,12 +241,11 @@ if __name__ == "__main__":
     ####################
     size_of_graph = 10
     size_of_big_graph = 20
-    number_of_graphs = 1
+    number_of_graphs = 2
     min_layers = 2
-    max_layers = 2
+    max_layers = 3
     modes = ["high", "random", "low"]
     graph_specs = {"type_graph": "regular", "degree": 3}
-    # graph_specs = None
 
     wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
         size_of_graph=size_of_graph,
@@ -250,4 +262,5 @@ if __name__ == "__main__":
 
     # pdb.set_trace()
     wf.validate()
+    # wf.print_workflow()
     wf.submit()
