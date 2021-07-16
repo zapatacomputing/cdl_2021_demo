@@ -25,6 +25,7 @@ from zquantum.core.interfaces.optimizer import (
 from zquantum.optimizers.scipy_optimizer import ScipyOptimizer
 from zquantum.qaoa.ansatzes.farhi_ansatz import QAOAFarhiAnsatz
 from zquantum.qaoa.problems.maxcut import get_maxcut_hamiltonian
+from zquantum.qaoa.problems.stable_set import get_stable_set_hamiltonian
 
 
 def load_graph_from_file(graph_size, graph_id):
@@ -35,12 +36,11 @@ def load_graph_from_file(graph_size, graph_id):
     )
 
 
-def get_problem_hamiltonian(graph: nx.graph) -> QubitOperator:
-    # from zquantum.qaoa.problems.graph_partition import get_graph_partition_hamiltonian
-    # return get_graph_partition_hamiltonian(graph)
-    # from zquantum.qaoa.problems.stable_set import get_stable_set_hamiltonian
-    # return get_stable_set_hamiltonian(graph)
-    return get_maxcut_hamiltonian(graph)
+def get_problem_hamiltonian(graph: nx.graph, problem="maxcut") -> QubitOperator:
+    if problem == "maxcut":
+        return get_maxcut_hamiltonian(graph)
+    if problem == "stable_set":
+        return get_stable_set_hamiltonian(graph)
 
 
 @qe.step(
@@ -64,8 +64,8 @@ def get_graph(
 @qe.step(
     resource_def=qe.ResourceDefinition(cpu="1000m", memory="2Gi", disk="10Gi"),
 )
-def get_problem_hamiltonian_step(graph: nx.Graph) -> QubitOperator:
-    return get_problem_hamiltonian(graph)
+def get_problem_hamiltonian_step(graph: nx.Graph, problem: str) -> QubitOperator:
+    return get_problem_hamiltonian(graph, problem)
 
 
 @qe.step(
@@ -157,6 +157,7 @@ def evaluate_params(
     graph_specs: Dict,
     number_of_layers: int,
     selected_results: OptimizeResult,
+    problem: str,
 ) -> Dict:
     results = []
     for graph_id in range(number_of_graphs):
@@ -165,7 +166,7 @@ def evaluate_params(
         ####################
 
         graph = get_graph(graph_size, graph_id, graph_specs)
-        cost_hamiltonian = get_problem_hamiltonian(graph)
+        cost_hamiltonian = get_problem_hamiltonian(graph, problem)
         ansatz = get_ansatz(
             number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
@@ -198,6 +199,7 @@ def qaoa_concentration_workflow(
     max_layers: int,
     modes: List[str],
     graph_specs: Optional[Dict],
+    problem: str,
 ) -> List[qe.StepDefinition]:
 
     ####################
@@ -210,7 +212,7 @@ def qaoa_concentration_workflow(
         ####################
         graph_id = 0
         graph = get_graph_step(size_of_graph, graph_id, graph_specs)
-        cost_hamiltonian = get_problem_hamiltonian_step(graph)
+        cost_hamiltonian = get_problem_hamiltonian_step(graph, problem)
         ansatz = get_ansatz_step(
             number_of_layers=number_of_layers, cost_hamiltonian=cost_hamiltonian
         )
@@ -234,6 +236,7 @@ def qaoa_concentration_workflow(
                     graph_specs,
                     number_of_layers,
                     opt_results,
+                    problem,
                 )
                 all_results.append(evaluation_results)
 
@@ -249,10 +252,12 @@ if __name__ == "__main__":
     number_of_graphs = 25
     min_layers = 2
     max_layers = 7
+    problem = "maxcut"
+    # problem = "stable_set"
     modes = ["high", "random", "low"]
-    # graph_specs = {"type_graph": "regular", "degree": 3}
+    graph_specs = {"type_graph": "regular", "degree": 3}
     # graph_specs = {"type_graph": "regular", "degree": 4}
-    graph_specs = {"type_graph": "erdos_renyi", "probability": 0.6}
+    # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.6}
     # graph_specs = {"type_graph": "erdos_renyi", "probability": 0.8}
 
     wf: qe.WorkflowDefinition = qaoa_concentration_workflow(
@@ -263,12 +268,9 @@ if __name__ == "__main__":
         max_layers=max_layers,
         modes=modes,
         graph_specs=graph_specs,
+        problem=problem,
     )
 
     # result = wf.local_run(log_level=logging.INFO)
-    # import pdb
-
-    # pdb.set_trace()
-    wf.validate()
-    # wf.print_workflow()
+    # wf.validate()
     wf.submit()
